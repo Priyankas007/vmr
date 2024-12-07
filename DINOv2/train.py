@@ -12,7 +12,7 @@ import sys
 from pathlib import Path
 project_root = Path(__file__).resolve().parent.parent
 sys.path.append(str(project_root))
-from models.dinov2_classifier import DINOv2ClassifierScratch, DINOv2ClassifierLinearProbe, DINOv2ClassifierFinetune
+from models.dinov2_classifier import DINOv2ClassifierScratch, DINOv2ClassifierLinearProbe, DINOv2ClassifierFinetune, DINOv2ClassifierFinetuneLoRA
 
 def train_model(train_loader, val_loader, model, device, labels, epochs=10, lr=1e-4, experiment_type=None):
     """
@@ -95,8 +95,10 @@ def get_dinov2_model(model_name, experiment_type, num_classes):
         model = DINOv2ClassifierScratch(model_name, num_classes)
     elif experiment_type == 'linearProbe':
         model = DINOv2ClassifierLinearProbe(model_name, num_classes)
+    elif experiment_type == 'LoRa':
+        model = DINOv2ClassifierFinetuneLoRA(model_name, num_classes)
     else:
-        raise ValueError(f"Invalid experiment_type: {experiment_type}. Choose from ['finetune', 'scratch', 'linearProbe'].")
+        raise ValueError(f"Invalid experiment_type: {experiment_type}. Choose from ['finetune', 'scratch', 'linearProbe', 'LoRa'].")
     return model
 
 
@@ -113,8 +115,8 @@ if __name__ == "__main__":
     
     
     # Paths
-    root_dir = "/scratch/users/shrestp/vmr/vmr_data"
-    save_dir = "/scratch/users/shrestp/vmr/outputs/checkpoints/"
+    root_dir = "/scratch/users/shrestp/vmr_cs286/DINOv2/vmr_data/"
+    save_dir = "/scratch/users/shrestp/vmr_cs286/DINOv2/outputs/checkpoints/"
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     
     batch_size=args.batch_size
@@ -124,9 +126,12 @@ if __name__ == "__main__":
     phase_labels = ['AD', 'DMF', 'END', 'PC', 'PF', 'SD', 'SMF', 'START']
 
     # Datasets and DataLoaders
+    print("Code has executed before create_data_loader for train")
     train_loader = create_data_loader(root_dir, split='train', batch_size=batch_size)
+    print("Code has executed after create_data_loader for train")
     val_loader = create_data_loader(root_dir, split='val', batch_size=batch_size)
     test_loader = create_data_loader(root_dir, split='test', batch_size=batch_size)
+    
     # DEBUGGING
     for i, (images, labels) in enumerate(train_loader):
         print(f"Batch {i}, Images shape: {images.shape}, Labels shape: {labels.shape}")

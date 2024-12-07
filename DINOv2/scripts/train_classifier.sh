@@ -20,8 +20,8 @@ module load viz py-matplotlib/3.7.1_py39
 module load devel py-torchvision/0.15.1_py39
 
 # Configurations for the jobs
-MODELS=("dinov2_vitb14")
-EXPERIMENTS=("finetune" "scratch")
+MODELS=("dinov2_vits14", "dinov2_vitb14")
+EXPERIMENTS=("LoRa")
 EPOCHS=(10 10)
 BATCH_SIZES=(32 32)
 LEARNING_RATES=(5e-5 5e-5)
@@ -55,7 +55,7 @@ echo "Batch size: $BATCH_SIZE"
 echo "Learning rate: $LEARNING_RATE"
 
 # Run the training script with the selected configuration
-python3 train_classifier.py --model_name="$MODEL" --experiment_type="$EXPERIMENT" --epochs="$EPOCH" --batch_size="$BATCH_SIZE" --lr="$LEARNING_RATE"
+python3 train.py --model_name="$MODEL" --experiment_type="$EXPERIMENT" --epochs="$EPOCH" --batch_size="$BATCH_SIZE" --lr="$LEARNING_RATE"
 
 if [ $? -eq 0 ]; then
     echo "SUCCESS: Training completed for task $SLURM_ARRAY_TASK_ID."
