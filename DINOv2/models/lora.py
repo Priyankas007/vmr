@@ -3,7 +3,7 @@ import torch.nn as nn
 
 
 class LoRA(nn.Module):
-    """Low-Rank Adaptation for the for Query (Q), Key (Q), Value (V) matrices"""
+    """Low-Rank Adaptation for the Query (Q) and Value (V) matrices"""
 
     def __init__(
         self,
@@ -12,6 +12,8 @@ class LoRA(nn.Module):
         linear_b_q: nn.Module,
         linear_a_v: nn.Module,
         linear_b_v: nn.Module,
+        alpha: int = 1,
+        r: int = 3,
     ):
         super().__init__()
         self.qkv = qkv
@@ -20,18 +22,19 @@ class LoRA(nn.Module):
         self.linear_a_v = linear_a_v
         self.linear_b_v = linear_b_v
         self.dim = qkv.in_features
-        self.w_identity = torch.eye(self.dim)
+        self.scale = alpha / r  # Scaling factor for LoRA updates
 
     def forward(self, x) -> torch.Tensor:
         # Compute the original qkv
         qkv = self.qkv(x)  # Shape: (B, N, 3 * org_C)
 
-        # Compute the new q and v components
-        new_q = self.linear_b_q(self.linear_a_q(x))
-        new_v = self.linear_b_v(self.linear_a_v(x))
+        # Compute the new q and v components with scaling
+        new_q = self.scale * self.linear_b_q(self.linear_a_q(x))  # LoRA update for query
+        new_v = self.scale * self.linear_b_v(self.linear_a_v(x))  # LoRA update for value
 
         # Add new q and v components to the original qkv tensor
-        qkv[:, :, : self.dim] += new_q
-        qkv[:, :, -self.dim :] += new_v
+        qkv[:, :, : self.dim] += new_q  # Update query
+        qkv[:, :, -self.dim :] += new_v  # Update value
 
         return qkv
+

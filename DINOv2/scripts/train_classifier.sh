@@ -5,26 +5,29 @@
 #SBATCH -c 4
 #SBATCH -G 1
 #SBATCH --mem=16GB
-#SBATCH --array=1-2                  # Adjusted range to match total configurations
+#SBATCH --array=1-8                 # Adjusted range to match total configurations
 #SBATCH --mail-type=END,FAIL
 #SBATCH --mail-user=shrestp@stanford.edu
 #SBATCH --output=logs/train_classifier_%A_%a.out
 #SBATCH --error=logs/train_classifier_%A_%a.err
 
 # Load required modules and activate environment
-conda activate cs286
+# conda activate cs286
 module load devel opencv/4.5.5
 module load system libtiff/4.0.8
 module load devel py-pytorch/2.0.0_py39
 module load viz py-matplotlib/3.7.1_py39
 module load devel py-torchvision/0.15.1_py39
+module load math py-wandb/0.18.7_py312
+
+export WANDB_API_KEY="eafabcd73d8954b61717e959bcc768d841ca2898"
 
 # Configurations for the jobs
-MODELS=("dinov2_vits14", "dinov2_vitb14")
-EXPERIMENTS=("LoRa")
-EPOCHS=(10 10)
-BATCH_SIZES=(32 32)
-LEARNING_RATES=(5e-5 5e-5)
+MODELS=("dinov2_vits14" "dinov2_vitb14")
+EXPERIMENTS=("finetune" "scratch" "linearProbe" "LoRa")
+EPOCHS=20
+BATCH_SIZES=32
+LEARNING_RATES=5e-5
 
 # Calculate total configurations
 TOTAL_CONFIGURATIONS=$((${#MODELS[@]} * ${#EXPERIMENTS[@]}))

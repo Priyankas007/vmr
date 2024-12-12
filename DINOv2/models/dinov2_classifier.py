@@ -12,15 +12,15 @@ class DINOv2ClassifierScratch(nn.Module):
 	
         # load in pretrained DINOv2 weights
         self.feature_extractor = torch.hub.load(
-            'facebookresearch/dinov2',  # GitHub repository
-            model_name,            # Model variant (e.g., ViT-B/14)
-            pretrained=False             # Load pretrained weights
+            'facebookresearch/dinov2', 
+            model_name,           
+            pretrained=False             
         )
 
         dim = 768 if model_name == 'dinov2_vitb14' else 384
 
-        self.feature_extractor.head = nn.Identity()  # Remove original classifier
-        self.classifier = nn.Linear(dim, num_classes)  # Adjust for your dataset
+        self.feature_extractor.head = nn.Identity()  
+        self.classifier = nn.Linear(dim, num_classes)
 
     def forward(self, x):
         features = self.feature_extractor(x)
@@ -33,15 +33,15 @@ class DINOv2ClassifierLinearProbe(nn.Module):
 	
         # load in pretrained DINOv2 weights
         self.feature_extractor = torch.hub.load(
-            'facebookresearch/dinov2',  # GitHub repository
-            model_name,            # Model variant (e.g., ViT-B/14)
-            pretrained=True             # Load pretrained weights
+            'facebookresearch/dinov2', 
+            model_name,           
+            pretrained=True            
         )
 
         dim = 768 if model_name == 'dinov2_vitb14' else 384
 
-        self.feature_extractor.head = nn.Identity()  # Remove original classifier
-        self.classifier = nn.Linear(dim, num_classes)  # Adjust for your dataset
+        self.feature_extractor.head = nn.Identity() 
+        self.classifier = nn.Linear(dim, num_classes) 
         
          # Freeze the feature extractor
         for param in self.feature_extractor.parameters():
@@ -58,15 +58,15 @@ class DINOv2ClassifierFinetune(nn.Module):
 	
         # load in pretrained DINOv2 weights
         self.feature_extractor = torch.hub.load(
-            'facebookresearch/dinov2',  # GitHub repository
-            model_name,                 # Model variant (e.g., ViT-B/14)
-            pretrained=True             # Load pretrained weights
+            'facebookresearch/dinov2', 
+            model_name,                
+            pretrained=True           
         )
 
         dim = 768 if model_name == 'dinov2_vitb14' else 384
 
-        self.feature_extractor.head = nn.Identity()  # Remove original classifier
-        self.classifier = nn.Linear(dim, num_classes)  # Adjust for your dataset
+        self.feature_extractor.head = nn.Identity() 
+        self.classifier = nn.Linear(dim, num_classes)  
 
     def forward(self, x):
         features = self.feature_extractor(x)
@@ -79,28 +79,28 @@ class DINOv2ClassifierFinetuneLoRA(nn.Module):
                 model_name,
                 num_classes,
                 r: int = 3,
+                alpha: int = 1,
                 img_dim: tuple[int, int] = (224, 224)
                 ):
         super(DINOv2ClassifierFinetuneLoRA, self).__init__()
         assert r > 0
         
-        self.inter_layers = 4 # number of previous layers to use as inupt
+        #self.inter_layers = 4 # number of previous layers to use as inupt
 	
         # load in pretrained DINOv2 weights
         self.feature_extractor = torch.hub.load(
-            'facebookresearch/dinov2',  # GitHub repository
-            model_name,            # Model variant (e.g., ViT-B/14)
-            pretrained=True     # Load pretrained weights
+            'facebookresearch/dinov2', 
+            model_name,          
+            pretrained=True     
         )
         
         for param in self.feature_extractor.parameters():
             param.requires_grad = False
         
-        #dim = 768 if model_name == 'dinov2_vitb14' else 384
         self.dim = self.feature_extractor.embed_dim
         
-        self.feature_extractor.head = nn.Identity()  # Remove original classifier
-        self.classifier = nn.Linear(self.dim, num_classes)  # Adjust for your dataset
+        self.feature_extractor.head = nn.Identity() 
+        self.classifier = nn.Linear(self.dim, num_classes)  
         
         # Decoder
         #self.decoder = LinearClassifier(
@@ -115,13 +115,16 @@ class DINOv2ClassifierFinetuneLoRA(nn.Module):
         print(f"self.lora_layers: {self.lora_layers}")
         self.w_a = []
         self.w_b = []
+        self.alpha = alpha
         
         for i, block in enumerate(self.feature_extractor.blocks):
             if i not in self.lora_layers:
                 continue
-            w_qkv_linear = block.attn.qkv
-            dim = w_qkv_linear.in_features
+
+            w_qkv_linear = block.attn.qkv # access attention layer
+            dim = w_qkv_linear.in_features # dimension of input features
             
+            # create LoRA layers for query and value projections
             w_a_linear_q, w_b_linear_q = self._create_lora_layer(self.dim, r)
             w_a_linear_v, w_b_linear_v = self._create_lora_layer(self.dim, r)
             
@@ -134,6 +137,7 @@ class DINOv2ClassifierFinetuneLoRA(nn.Module):
                     w_b_linear_q,
                     w_a_linear_v,
                     w_b_linear_v,
+                    alpha=self.alpha
             )
             
         self._reset_lora_parameters()
@@ -151,7 +155,7 @@ class DINOv2ClassifierFinetuneLoRA(nn.Module):
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         features = self.feature_extractor(x)
-
+        return self.classifier(features)
         # get the patch embeddings - so we exclude the CLS token
         # patch_embeddings = feature["x_norm_patchtokens"]
         # logits s= self.decoder(patch_embeddings)
@@ -164,6 +168,5 @@ class DINOv2ClassifierFinetuneLoRA(nn.Module):
           #  mode="bilinear",
          #   align_corners=False,
         #)
-        return self.classifier(features)
 
 
